@@ -1,5 +1,5 @@
 # MotherTree
-Code for paper: *MotherTree: Meta-learning on synthetic data improves decision tree training* <a href="https://arxiv.org/abs/2610.10832">Arxiv</a>.
+Code for paper:  <a href="https://arxiv.org/abs/2610.10832">*MotherTree: Meta-learning on synthetic data improves decision tree training*</a>.
 
 MotherTree a tabular hypernetwork that is meta learned from sythentic dataset and can output a tree given the context. The downstream predictor is based on a gradient-based axis-aligned  decision tree,  <a href="https://arxiv.org/abs/2305.03515">GradTree</a>, (`GradTreeClassifier`). 
 
