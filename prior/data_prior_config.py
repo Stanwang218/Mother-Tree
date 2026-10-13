@@ -1,5 +1,7 @@
 import torch
 from prior.activation import * 
+import os
+from logging import warning
 
 
 class RandomChoiceActivation(nn.Module):
@@ -98,6 +100,7 @@ def get_activations(random: bool = True, scale: bool = True, diverse: bool = Tru
     return activations
 
 
+# MotherNet MLP prior configuration
 def mothernet_mlp_config(): 
     """
     Copy from original mothernet repo
@@ -127,7 +130,7 @@ def mothernet_mlp_config():
                         'add_uninformative_features': False}
     return mlp_prior_config
 
-
+# TabICL v1 MLP prior configuration
 def tabiclv1_mlp_config():
     mlp_prior_config = {"pre_sample_causes": True,
                     "sampling": {'distribution': 'meta_choice', 'choice_values': ['normal', 'mixed', 'uniform']},
@@ -166,3 +169,99 @@ def tabiclv1_mlp_config():
                     "in_clique": {'distribution': 'meta_choice', 'choice_values': [True, False]},
                     'add_uninformative_features': False}
     return mlp_prior_config
+
+def get_prior_config(max_features=100, n_samples=1024+128, mlp_prior_type='default'):
+    """"
+    Returns the configuration parameters for the tabular multiclass wrapper.
+    """
+
+    prior = {
+        "num_features": max_features,
+        "n_samples": n_samples,
+        "eval_positions": [n_samples * 0.95],
+        'heterogeneous_batches': False,
+        'multiclass_loss_type': 'nono',  # 'compatible'
+        'prior_type': 'prior_bag',
+        'prior_bag': {'prior_bag_exp_weights_1': {'distribution': 'uniform', 'min': 2.0, 'max': 10.0}},
+        'batch_size_per_subgroup': 4}
+
+
+
+    if mlp_prior_type == 'default':
+        mlp_prior_config = mothernet_mlp_config()
+    elif mlp_prior_type == 'tabiclv1' or mlp_prior_type == 'tabiclv2':
+        mlp_prior_config = tabiclv1_mlp_config()
+        if mlp_prior_type == 'tabiclv2':
+            warning("Using tabiclv2 prior, but will run from another branch")
+    else:
+        raise ValueError(f"Unknown MLP prior type: {mlp_prior_type}")
+
+    prior['mlp'] = mlp_prior_config
+
+    gp_prior_config = {
+        'outputscale': {'distribution': 'log_uniform', 'min': 1e-5, 'max': 8},
+        'lengthscale': {'distribution': 'log_uniform', 'min': 1e-5, 'max': 8},
+        'noise': {'distribution': 'meta_choice', 'choice_values': [0.00001, 0.0001, 0.01]},
+        "sampling": 'normal',  # hp.choice('sampling', ['mixed', 'normal']), # uniform
+    }
+
+    prior['gp'] = gp_prior_config
+
+    tree_prior_config = {
+        # TreeSCM internally hardcodes: is_causal=False, num_layers=[1,2], hidden_dim=[3,9]
+        "tree_model": "xgboost",
+        "tree_depth_lambda": 0.5,
+        "tree_n_estimators_lambda": 0.5,
+        "sampling": {'distribution': 'meta_choice', 'choice_values': ['normal', 'mixed', 'uniform']},
+        "pre_sample_cause_stats": {"distribution": "meta_choice", "choice_values": [True, False]},
+        "pre_sample_noise_std": {"distribution": "meta_choice", "choice_values": [True, False]},
+    }
+
+    prior['tree'] = tree_prior_config
+
+    prior['step_function'] = {
+        'max_steps': 1,
+        'sampling': 'uniform',
+    }
+
+    max_num_classes = 10
+    classsification_prior = {
+        "max_num_classes": max_num_classes,
+        "num_classes": {'distribution': 'uniform_int', 'min': 2, 'max': max_num_classes},
+        # "noise_type": "Gaussian",  # NN unused?!
+        "balanced": False,
+        'output_multiclass_ordered_p': 0.,
+        'multiclass_max_steps': 10,
+        "multiclass_type": 'rank',
+        'categorical_feature_p': .2,  # diff: .0
+        'nan_prob_no_reason': 0.0,
+        'nan_prob_a_reason': 0.0,
+        'set_value_to_nan': .9,
+        'num_features_sampler': 'uniform',
+        'pad_zeros': True,
+        'feature_curriculum': False,
+    }
+    prior['classification'] = classsification_prior
+
+    dataloader = {
+        "batch_size": 8,
+        "total_steps": None,
+        'min_eval_pos': 2,
+        'random_n_samples': 0,
+        'n_test_samples': 0,
+    }
+    
+    openmlloader = {
+        'valid_data': 'old',
+        'max_samples': float('inf'),
+        'pca': False,
+        'val_csv_path': os.path.normpath(os.path.join(os.path.dirname(__file__), 'val_dataset', 'openml_old_datasets_val.csv')),
+        'val_pkl_path': os.path.normpath(os.path.join(os.path.dirname(__file__), 'val_dataset', 'openml_old_datasets_val.pkl')),
+    }
+
+    prior['boolean'] = {
+        'max_fraction_uninformative': 0.5,
+        'p_uninformative': 0.5
+    }
+
+    return {'prior': prior, 'dataloader': dataloader, 'openmlloader': openmlloader}
