@@ -1,0 +1,23 @@
+{
+    "batch_size": 64,
+    "batch_size_per_gp": 1,
+    "min_features": 1,
+    "max_features": 100,
+    "max_classes": 10,
+    "min_seq_len": 400,
+    "max_seq_len": 60000,
+    "log_seq_len": false,
+    "seq_len_per_gp": true,
+    "min_train_size": 0.79,
+    "max_train_size": 0.81,
+    "replay_small": false,
+    "prior_type": "graph_scm",
+    "device": "cpu",
+    "n_jobs": 1,
+    "filter_unpredictable_graphs": true,
+    "filter_unpredictable_datasets": true,
+    "allow_act_warping": false,
+    "min_n_nodes": 2,
+    "max_n_nodes": 32,
+    "cauchy_dag_offset": 0.0
+}

@@ -1,6 +1,8 @@
 import torch
-from prior.activation import * 
 import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # Add parent directory to sys.path
+from prior.activation import * 
 from logging import warning
 
 
@@ -170,7 +172,7 @@ def tabiclv1_mlp_config():
                     'add_uninformative_features': False}
     return mlp_prior_config
 
-def get_prior_config(max_features=100, n_samples=1024+128, mlp_prior_type='default'):
+def get_prior_config(max_features=100, n_samples=1024+128, mlp_prior_type='mothernet'):
     """"
     Returns the configuration parameters for the tabular multiclass wrapper.
     """
@@ -187,7 +189,7 @@ def get_prior_config(max_features=100, n_samples=1024+128, mlp_prior_type='defau
 
 
 
-    if mlp_prior_type == 'default':
+    if mlp_prior_type == 'mothernet':
         mlp_prior_config = mothernet_mlp_config()
     elif mlp_prior_type == 'tabiclv1' or mlp_prior_type == 'tabiclv2':
         mlp_prior_config = tabiclv1_mlp_config()
